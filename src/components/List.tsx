@@ -22,7 +22,6 @@ const List = () => {
 
     const currentLastGifRef = lastGifRef.current;
 
-    //if (observerRef.current) observerRef.current.disconnect();
     if (observerRef.current && currentLastGifRef) {
       observerRef.current.unobserve(currentLastGifRef);
     }
@@ -37,7 +36,7 @@ const List = () => {
             entry.isIntersecting &&
             !fetchingRef.current &&
             !apiGifsData.loading &&
-            apiGifsData.gifs.length < apiGifsData.maxCount
+            !apiGifsData.endReached
           ) {
             fetchingRef.current = true;
             setPageNumber((prev) => prev + 1);
@@ -56,7 +55,7 @@ const List = () => {
         observerRef.current.unobserve(currentLastGifRef);
       }
     };
-  }, [apiGifsData.gifs, apiGifsData.loading, apiGifsData.maxCount]);
+  }, [apiGifsData.gifs, apiGifsData.loading, apiGifsData.endReached]);
 
   // 🔄 On met à jour le verrou local dès que le chargement se termine
   useEffect(() => {
@@ -91,7 +90,7 @@ const List = () => {
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-14 flex items-center gap-2"
           disabled={apiGifsData.loading}
         >
-          {apiGifsData.loading ? (
+          {apiGifsData.loading && !apiGifsData.error.state ? (
             <>
               <Spinner size="sm" color="text-white" />
               Searching...
@@ -101,6 +100,8 @@ const List = () => {
           )}
         </button>
       </form>
+
+      {apiGifsData.error.state && <p className="text-red-600 dark:text-red-400">{apiGifsData.error.msg}</p>}
 
       <ul
         className="
@@ -143,7 +144,7 @@ const List = () => {
           Array.from({ length: 8 }).map((_, i) => <GifSkeleton key={i} />)}
       </ul>
 
-      {apiGifsData.loading && (
+      {apiGifsData.loading && !apiGifsData.error.state && (
         <div className="flex justify-center items-center py-8">
           <Spinner size="lg" color="text-blue-500" />
         </div>

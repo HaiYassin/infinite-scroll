@@ -15,6 +15,13 @@ interface UseGifsReturn {
     state: boolean;
   };
   maxCount: number;
+  endReached: boolean;
+}
+
+interface ErrorInterface {
+  msg: string;
+  statusCode: string | number;
+  state: boolean;
 }
 
 export default function useGifs(
@@ -23,12 +30,13 @@ export default function useGifs(
 ): UseGifsReturn {
   const [gifs, setGifs] = useState<Gif[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState({
+  const [error, setError] = useState<ErrorInterface>({
     msg: "",
     statusCode: "",
     state: false,
   });
   const [maxCount, setMaxCount] = useState<number>(0);
+  const [endReached, setEndReached] = useState<boolean>(false);
 
   useEffect(() => {
     let ignore = false;
@@ -53,14 +61,26 @@ export default function useGifs(
       : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=${limit}&offset=${offset}`;
 
     fetch(endpoint)
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(`${response.status} Error, something went wrong.`);
+
+        return response.json();
+      })
       .then((data) => {
         if (ignore) return;
+
         const newGifs = data.data.map((gif: any) => ({
           id: gif.id,
           title: gif.title,
           url: gif.images.fixed_height.url,
         }));
+
+        const total = data.pagination.total_count;
+        const isFinished = newGifs.length === 0 || offset + limit >= total;
+
+        setEndReached(isFinished);
+
         setGifs((prev) => {
           if (pageNumber === 0) return newGifs;
 
@@ -69,17 +89,27 @@ export default function useGifs(
             ...newGifs.filter((g: Gif) => !prev.some((p) => p.id === g.id)),
           ];
 
-          console.log(uniqueGifs)
+          console.log(uniqueGifs);
 
           return uniqueGifs;
         });
+
         setError({
           msg: data.meta.msg,
           statusCode: data.meta.status,
           state: false,
         });
-        setMaxCount(data.pagination.total_count);
+
+        setMaxCount(total);
+
         setLoading(false);
+      })
+      .catch((err) => {
+        setError({
+          msg: err.message,
+          statusCode: err.status,
+          state: true,
+        });
       });
 
     return () => {
@@ -87,5 +117,5 @@ export default function useGifs(
     };
   }, [querySearch, pageNumber]);
 
-  return { error, gifs, maxCount, loading };
+  return { error, gifs, maxCount, loading, endReached };
 }
