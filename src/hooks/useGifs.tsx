@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { nanoid } from "nanoid";
 
 interface Gif {
   id: string;
@@ -62,7 +61,18 @@ export default function useGifs(
           title: gif.title,
           url: gif.images.fixed_height.url,
         }));
-        setGifs((prev) => [...prev, ...newGifs]);
+        setGifs((prev) => {
+          if (pageNumber === 0) return newGifs;
+
+          const uniqueGifs = [
+            ...prev,
+            ...newGifs.filter((g: Gif) => !prev.some((p) => p.id === g.id)),
+          ];
+
+          console.log(uniqueGifs)
+
+          return uniqueGifs;
+        });
         setError({
           msg: data.meta.msg,
           statusCode: data.meta.status,
